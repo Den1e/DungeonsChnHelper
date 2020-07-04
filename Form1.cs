@@ -486,8 +486,26 @@ namespace DungeonsHelper
 
         private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            this.linkLabel1.Links[0].LinkData = "https://tieba.baidu.com/f?fr=wwwt&kw=%E6%88%91%E7%9A%84%E4%B8%96%E7%95%8C%E5%9C%B0%E4%B8%8B%E5%9F%8E";
+            this.linkLabel1.Links[0].LinkData = "https://www.mcbbs.net/forum.php?mod=viewthread&tid=1018057";
             System.Diagnostics.Process.Start(e.Link.LinkData.ToString());  
+        }
+
+        private void linkLabel2_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            this.linkLabel2.Links[0].LinkData = "https://tieba.baidu.com/p/6789499149";
+            System.Diagnostics.Process.Start(e.Link.LinkData.ToString());  
+        }
+
+        private void linkLabel3_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            this.linkLabel3.Links[0].LinkData = "https://www.mcbbs.net/portal.php";
+            System.Diagnostics.Process.Start(e.Link.LinkData.ToString());  
+        }
+
+        private void linkLabel4_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            this.linkLabel4.Links[0].LinkData = "https://tieba.baidu.com/f?fr=wwwt&kw=%E6%88%91%E7%9A%84%E4%B8%96%E7%95%8C%E5%9C%B0%E4%B8%8B%E5%9F%8E";
+            System.Diagnostics.Process.Start(e.Link.LinkData.ToString()); 
         }
 
     }
