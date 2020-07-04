@@ -9,6 +9,8 @@ using System.Diagnostics;
 using System.Threading;
 using System.Runtime.InteropServices;
 using System.IO;
+using Microsoft.Win32;
+using System.Management;
 
 namespace DungeonsHelper
 {
@@ -16,15 +18,12 @@ namespace DungeonsHelper
     {
 
         private String gamePath = "";
-        private String pakFile = "";
 
         public Form1()
         {
             InitializeComponent();
         }
 
-        [DllImport("Shell32.dll")]
-        private static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)]Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr ppszPath);
 
         private static class NativeMethods
         {
@@ -46,6 +45,10 @@ namespace DungeonsHelper
 
             [DllImport("User32.dll", CharSet = CharSet.Auto)]
             internal static extern bool IsWindowVisible(IntPtr hWnd);
+
+            [DllImport("Shell32.dll")]
+            internal static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)]Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr ppszPath);
+
         }
 
         public IntPtr GetMainWindowHandle(int processId)
@@ -70,6 +73,36 @@ namespace DungeonsHelper
             }), new IntPtr(processId));
 
             return MainWindowHandle;
+        }
+
+        // 检查是否在开发者模式
+        public bool CheckIsDevelopmentMode()
+        {
+            try
+            {
+                RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\");
+                if (key != null)
+                {
+                    key = key.OpenSubKey("AppModelUnlock");
+                    if (key != null)
+                    {
+                        object obj = key.GetValue("AllowDevelopmentWithoutDevLicense");
+                        if (obj != null)
+                        {
+                            if (obj.ToString().Equals("1"))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+
+            return false;
         }
 
         public Process LaunchGame()
@@ -116,6 +149,7 @@ namespace DungeonsHelper
             return true;
         }
 
+        // 线程中操作UI避免死锁
         delegate void UpdateLogCallback(String log);
         private void UpdateLog(String log)
         {
@@ -132,6 +166,26 @@ namespace DungeonsHelper
             else
             {
                 this.textBox1.AppendText(log + "\r\n");
+            }
+
+        }
+
+        delegate void FinishedCallback();
+        private void Finished()
+        {
+            if (this.InvokeRequired)
+            {
+                while (!this.IsHandleCreated)
+                {
+                    if (this.Disposing || this.IsDisposed)
+                        return;
+                }
+                FinishedCallback d = new FinishedCallback(Finished);
+                this.Invoke(d, new object[] { });
+            }
+            else
+            {
+                this.button1.Enabled = true;
             }
 
         }
@@ -228,7 +282,7 @@ namespace DungeonsHelper
 
             // 获取“保存的游戏”目录
             IntPtr outPath;
-            if (SHGetKnownFolderPath(new Guid("{4C5C32FF-BB9D-43b0-B5B4-2D72E54EAAA4}"),
+            if (NativeMethods.SHGetKnownFolderPath(new Guid("{4C5C32FF-BB9D-43b0-B5B4-2D72E54EAAA4}"),
                 0x00004000, new IntPtr(0), out outPath) >= 0)
             {
                 CopyDir(Marshal.PtrToStringUni(outPath) + "\\Mojang Studios\\Dungeons\\", "D:\\DungeonsSaves\\1.2");
@@ -274,69 +328,96 @@ namespace DungeonsHelper
 
         public void DoLocalization()
         {
-            Process process = null;
-
-            // 检测游戏在不在
-            process = FindGameHide();
-
-            if (process == null)
+            try
             {
-                UpdateLog("正在启动游戏..");
-                LaunchGame();
+                Process process = null;
 
-                while (true)
+                // 检测游戏在不在
+                process = FindGameHide();
+
+                if (process == null)
                 {
-                    process = FindGameHide();
-                    if (process != null)
+                    UpdateLog("正在启动游戏..");
+                    LaunchGame();
+
+                    while (true)
                     {
-                        UpdateLog("游戏启动成功，等待加载完成..");
-                        break;
+                        process = FindGameHide();
+                        if (process != null)
+                        {
+                            UpdateLog("游戏启动成功，等待加载完成..");
+                            break;
+                        }
+
+                        Thread.Sleep(50);
                     }
 
-                    Thread.Sleep(50);
+                    // 等待20秒吧
+                    Thread.Sleep(1000 * 20);
+                }
+                else
+                {
+                    UpdateLog("游戏正在运行，请稍候..");
                 }
 
-                // 等待20秒吧
-                Thread.Sleep(1000 * 20);
+                UpdateLog("等待导出包..");
+
+                // 启动注入工具导出包
+                LaunchUWPInjector(process);
+
+                if (!Directory.Exists("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP"))
+                {
+                    KillGame(process);
+                    throw new Exception("导出包失败，请联系开发组。");
+                }
+
+                // 关闭弹出的文件夹
+                UpdateLog("包已导出。");
+
+                UpdateLog("正在移动文件..");
+                MoveDir("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP", gamePath);
+
+                UpdateLog("文件移动完毕，写入Paks..");
+                CopyDir(Application.StartupPath + "/Paks/", gamePath + "\\Dungeons\\Content\\Paks\\");
+
+                UpdateLog("汉化完成，等待重新注册应用..");
+
+                KillGame(process);
+
+                Thread.Sleep(1000);
+
+                BackupSaves();
+
+                RegApp();
+
+                // 还原旧存档
+                CopyDir("D:\\DungeonsSaves\\1.0", "C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Dungeons\\");
+                UpdateLog("存档还原完毕。");
+
+                UpdateLog("全部完成，可以开始游戏了：）");
             }
-            else
+            catch (Exception ex)
             {
-                UpdateLog("游戏正在运行，请稍候..");
+                UpdateLog("错误：" + ex.Message);
             }
-
-            UpdateLog("等待导出包..");
-
-            // 启动注入工具导出包
-            LaunchUWPInjector(process);
-
-            // 关闭弹出的文件夹
-            UpdateLog("包已导出。");
-
-            UpdateLog("正在移动文件..");
-            MoveDir("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP", gamePath);
-
-            UpdateLog("文件移动完毕，写入Paks..");
-            File.Copy(Application.StartupPath + "/Paks/" + pakFile, gamePath + "\\Dungeons\\Content\\Paks\\" + pakFile, true);
-
-            UpdateLog("汉化完成，等待重新注册应用..");
-
-            KillGame(process);
-
-            Thread.Sleep(1000);
-
-            BackupSaves();
-
-            RegApp();
-
-            // 还原旧存档
-            CopyDir("D:\\DungeonsSaves\\1.0", "C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Dungeons\\");
-            UpdateLog("存档还原完毕。");
-
-            UpdateLog("全部完成，可以开始游戏了：）");
+            finally
+            {
+                Finished();
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
+            if (!CheckIsDevelopmentMode())
+            {
+                if ((int)MessageBox.Show("检测到您的系统未打开“开发人员模式”，可能会导致游戏汉化失败。请您前往windows开始-->设置-->开发者选项-->选择开发人员模式，汉化完成后即可改回去。\r\n\r\n点击确定仍继续执行，点击取消返回。", "提示", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != 1)
+                {
+                    return;
+                }
+            }
+
+            button1.Enabled = false;
+
             textBox1.Clear();
 
             if (textBox2.Text.Equals(""))
@@ -356,14 +437,21 @@ namespace DungeonsHelper
         private void Form1_Load(object sender, EventArgs e)
         {
             DirectoryInfo dir = new DirectoryInfo(Application.StartupPath + "/Paks/");
+
             foreach (FileInfo file in dir.GetFiles())
             {
                 if (file.Name.ToLower().EndsWith(".pak"))
                 {
                     label4.Text += file.Name + " ";
-                    pakFile = file.Name;
                     break;
                 }
+            }
+
+            if (File.Exists(Application.StartupPath + "/.GamePath"))
+            {
+                StreamReader sr = new StreamReader(Application.StartupPath + "/.GamePath", Encoding.UTF8);
+                textBox2.Text = sr.ReadToEnd();
+                sr.Close();
             }
         }
 
@@ -380,7 +468,19 @@ namespace DungeonsHelper
         {
             if (folderBrowserDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                textBox2.Text = folderBrowserDialog1.SelectedPath + "\\Dungeons";
+                if (folderBrowserDialog1.SelectedPath.EndsWith("Dungeons"))
+                {
+                    textBox2.Text = folderBrowserDialog1.SelectedPath;
+                }
+                else
+                {
+                    textBox2.Text = folderBrowserDialog1.SelectedPath + "\\Dungeons";
+                }
+
+                StreamWriter sw = new StreamWriter(Application.StartupPath + "/.GamePath");
+                sw.WriteLine(textBox2.Text);
+                sw.Flush();
+                sw.Close();
             }
         }
 
@@ -390,9 +490,5 @@ namespace DungeonsHelper
             System.Diagnostics.Process.Start(e.Link.LinkData.ToString());  
         }
 
-        private void button3_Click_1(object sender, EventArgs e)
-        {
-            RegApp();
-        }
     }
 }
