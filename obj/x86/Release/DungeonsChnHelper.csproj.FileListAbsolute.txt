@@ -1,8 +1,0 @@
-E:\Projects\C#\DungeonsChnHelper\DungeonsChnHelper\bin\Release\DungeonsChnHelper.exe.config
-E:\Projects\C#\DungeonsChnHelper\DungeonsChnHelper\bin\Release\DungeonsChnHelper.exe
-E:\Projects\C#\DungeonsChnHelper\DungeonsChnHelper\bin\Release\DungeonsChnHelper.pdb
-E:\Projects\C#\DungeonsChnHelper\DungeonsChnHelper\obj\x86\Release\DungeonsHelper.Form1.resources
-E:\Projects\C#\DungeonsChnHelper\DungeonsChnHelper\obj\x86\Release\DungeonsChnHelper.Properties.Resources.resources
-E:\Projects\C#\DungeonsChnHelper\DungeonsChnHelper\obj\x86\Release\DungeonsChnHelper.csproj.GenerateResource.Cache
-E:\Projects\C#\DungeonsChnHelper\DungeonsChnHelper\obj\x86\Release\DungeonsChnHelper.exe
-E:\Projects\C#\DungeonsChnHelper\DungeonsChnHelper\obj\x86\Release\DungeonsChnHelper.pdb
