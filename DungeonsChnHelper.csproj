@@ -122,7 +122,8 @@
 mkdir .\Bin\
 xcopy $(ProjectDir)Paks  .\Paks\
 copy  $(ProjectDir)UWPDumper.dll .\Bin\UWPDumper.dll
-copy  $(ProjectDir)UWPInjector.exe .\Bin\UWPInjector.exe</PreBuildEvent>
+copy  $(ProjectDir)UWPInjector.exe .\Bin\UWPInjector.exe
+copy  $(ProjectDir)vcruntime140_1.dll .\Bin\vcruntime140_1.dll</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PostBuildEvent>
