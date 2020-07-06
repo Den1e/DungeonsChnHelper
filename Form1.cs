@@ -24,6 +24,7 @@ namespace DungeonsHelper
             InitializeComponent();
         }
 
+        private bool debug = false;
 
         private static class NativeMethods
         {
@@ -242,6 +243,8 @@ namespace DungeonsHelper
                 Directory.CreateDirectory(toDir);
             }
 
+            //throw new Exception("sdfsdsf");
+
             string[] files = Directory.GetFiles(fromDir);
             foreach (string formFileName in files)
             {
@@ -332,67 +335,92 @@ namespace DungeonsHelper
             {
                 Process process = null;
 
-                // 检测游戏在不在
-                process = FindGameHide();
-
-                if (process == null)
+                if (!debug)
                 {
-                    UpdateLog("正在启动游戏..");
-                    LaunchGame();
+                    // 检测游戏在不在
+                    process = FindGameHide();
 
-                    while (true)
+                    if (process == null)
                     {
-                        process = FindGameHide();
-                        if (process != null)
+                        UpdateLog("正在启动游戏..");
+                        LaunchGame();
+
+                        while (true)
                         {
-                            UpdateLog("游戏启动成功，等待加载完成..");
-                            break;
+                            process = FindGameHide();
+                            if (process != null)
+                            {
+                                UpdateLog("游戏启动成功，等待加载完成..");
+                                break;
+                            }
+
+                            Thread.Sleep(50);
                         }
 
-                        Thread.Sleep(50);
+                        // 等待20秒吧
+                        Thread.Sleep(1000 * 20);
+                    }
+                    else
+                    {
+                        UpdateLog("游戏正在运行，请稍候..");
                     }
 
-                    // 等待20秒吧
-                    Thread.Sleep(1000 * 20);
-                }
-                else
-                {
-                    UpdateLog("游戏正在运行，请稍候..");
-                }
+                    UpdateLog("等待导出包..");
 
-                UpdateLog("等待导出包..");
+                    // 启动注入工具导出包
+                    LaunchUWPInjector(process);
 
-                // 启动注入工具导出包
-                LaunchUWPInjector(process);
-
-                if (!Directory.Exists("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP"))
-                {
-                    KillGame(process);
-                    throw new Exception("导出包失败，请联系开发组。");
+                    if (!Directory.Exists("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP"))
+                    {
+                        KillGame(process);
+                        throw new Exception("导出包失败，请联系开发组。");
+                    }
                 }
 
                 // 关闭弹出的文件夹
                 UpdateLog("包已导出。");
 
                 UpdateLog("正在移动文件..");
-                MoveDir("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP", gamePath);
+                try
+                {
+                    MoveDir("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP", gamePath);
+                }
+                catch (Exception ex)
+                {
+                    if ((int)MessageBox.Show("检测到错误：" + ex.Message + "\r\n\r\n请不要点击按钮，现在需要您手动进行一个操作。操作如下：在弹出的文件夹中有一个“DUMP”文件夹，请打开它，将里面全部文件拷贝到“" + gamePath + "”下，注意目录层级，拷贝完成后请点击确定继续执行。\r\n\r\n作者目前不清楚这个错误为何发生，如果您知道原因请右下角联系作者帮助改进程序，谢谢。", "手动操作提示", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != 1)
+                    {
+                        UpdateLog("取消执行。");
+                        return;
+                    }
+                    else
+                    {
+                        UpdateLog("用户确认手动操作。");
+                    }
+
+                    // 检查是否正确移动
+                }
 
                 UpdateLog("文件移动完毕，写入Paks..");
                 CopyDir(Application.StartupPath + "/Paks/", gamePath + "\\Dungeons\\Content\\Paks\\");
 
                 UpdateLog("汉化完成，等待重新注册应用..");
 
-                KillGame(process);
+                if (!debug)
+                {
 
-                Thread.Sleep(1000);
+                    KillGame(process);
 
-                BackupSaves();
+                    Thread.Sleep(1000);
 
-                RegApp();
+                    BackupSaves();
 
-                // 还原旧存档
-                CopyDir("D:\\DungeonsSaves\\1.0", "C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Dungeons\\");
-                UpdateLog("存档还原完毕。");
+                    RegApp();
+
+                    // 还原旧存档
+                    CopyDir("D:\\DungeonsSaves\\1.0", "C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Dungeons\\");
+                    UpdateLog("存档还原完毕。");
+
+                }
 
                 UpdateLog("全部完成，可以开始游戏了：）");
             }
@@ -450,7 +478,7 @@ namespace DungeonsHelper
             if (File.Exists(Application.StartupPath + "/.GamePath"))
             {
                 StreamReader sr = new StreamReader(Application.StartupPath + "/.GamePath", Encoding.UTF8);
-                textBox2.Text = sr.ReadToEnd();
+                textBox2.Text = sr.ReadToEnd().Trim();
                 sr.Close();
             }
         }
@@ -506,6 +534,11 @@ namespace DungeonsHelper
         {
             this.linkLabel4.Links[0].LinkData = "https://tieba.baidu.com/f?fr=wwwt&kw=%E6%88%91%E7%9A%84%E4%B8%96%E7%95%8C%E5%9C%B0%E4%B8%8B%E5%9F%8E";
             System.Diagnostics.Process.Start(e.Link.LinkData.ToString()); 
+        }
+
+        private void button3_Click_1(object sender, EventArgs e)
+        {
+            CopyDir(Application.StartupPath + "/Paks/", Application.StartupPath + "/aaa/");
         }
 
     }
