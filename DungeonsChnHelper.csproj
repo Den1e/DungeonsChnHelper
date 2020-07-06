@@ -120,10 +120,16 @@
   <PropertyGroup>
     <PreBuildEvent>mkdir .\Paks\
 mkdir .\Bin\
+mkdir .\Bin\x64\
+mkdir .\Bin\x86\
 xcopy $(ProjectDir)Paks  .\Paks\
-copy  $(ProjectDir)UWPDumper.dll .\Bin\UWPDumper.dll
-copy  $(ProjectDir)UWPInjector.exe .\Bin\UWPInjector.exe
-copy  $(ProjectDir)vcruntime140_1.dll .\Bin\vcruntime140_1.dll</PreBuildEvent>
+copy  $(ProjectDir)\x64\UWPDumper.dll .\Bin\x64\UWPDumper.dll
+copy  $(ProjectDir)\x64\UWPInjector.exe .\Bin\x64\UWPInjector.exe
+copy  $(ProjectDir)\x64\vcruntime140_1.dll .\Bin\x64\vcruntime140_1.dll
+copy  $(ProjectDir)\x86\UWPDumper.dll .\Bin\x86\UWPDumper.dll
+copy  $(ProjectDir)\x86\UWPInjector.exe .\Bin\x86\UWPInjector.exe
+copy  $(ProjectDir)rar.exe .\Bin\rar.exe
+copy  $(ProjectDir)unrar.exe .\Bin\unrar.exe</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PostBuildEvent>

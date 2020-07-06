@@ -26,6 +26,15 @@ namespace DungeonsHelper
 
         private bool debug = false;
 
+        public String OsMode()
+        {
+            if (IntPtr.Size == 8)
+            {
+                return "x64";
+            }
+            return "x86";
+        }
+
         private static class NativeMethods
         {
             internal const uint GW_OWNER = 4;
@@ -196,7 +205,7 @@ namespace DungeonsHelper
             //创建一个进程
             Process process = new Process();
             process.StartInfo.FileName = "cmd.exe";
-            process.StartInfo.Arguments = "/c " + Application.StartupPath + "/Bin/UWPInjector.exe -p " + gameProcess.Id;
+            process.StartInfo.Arguments = "/c " + Application.StartupPath + "/Bin/" + OsMode() + "/UWPInjector.exe -p " + gameProcess.Id;
 
             // 必须禁用操作系统外壳程序
             process.StartInfo.UseShellExecute = false;
@@ -233,7 +242,7 @@ namespace DungeonsHelper
             //返回流结果
         }
 
-        public static void CopyDir(string fromDir, string toDir)
+        public void CopyDir(string fromDir, string toDir)
         {
             if (!Directory.Exists(fromDir))
                 return;
@@ -261,7 +270,7 @@ namespace DungeonsHelper
             }
         }
 
-        public static void MoveDir(string fromDir, string toDir)
+        public void MoveDir(string fromDir, string toDir)
         {
             if (!Directory.Exists(fromDir))
                 return;
@@ -270,6 +279,55 @@ namespace DungeonsHelper
 
             try
             {
+                Directory.Delete(fromDir, true);
+            }
+            catch (Exception ex)
+            {
+            }
+        }
+
+        public void Rar(String soruceDir, String rarFileName)
+        {
+            String commandOptions = string.Format("a {0} {1} -r -ep1", rarFileName, soruceDir);
+ 
+            ProcessStartInfo processStartInfo = new ProcessStartInfo();
+            processStartInfo.FileName = Application.StartupPath + "/Bin/rar.exe";
+            processStartInfo.Arguments = commandOptions;
+            processStartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            Process process = new Process();
+            process.StartInfo = processStartInfo;
+            process.Start();
+            process.WaitForExit();
+            process.Close();
+        }
+
+        public void UnRar(String saveDir, String rarFileName)
+        {
+            String commandOptions = string.Format("x {0} {1} -y", rarFileName, saveDir);
+ 
+            ProcessStartInfo processStartInfo = new ProcessStartInfo();
+            processStartInfo.FileName = Application.StartupPath + "/Bin/rar.exe";
+            processStartInfo.Arguments = commandOptions;
+            processStartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+ 
+            Process process = new Process();
+            process.StartInfo = processStartInfo;
+            process.Start();
+            process.WaitForExit();
+            process.Close();
+        }
+
+        public void MoveDirByRar(string fromDir, string toDir)
+        {
+            if (!Directory.Exists(fromDir))
+                return;
+
+            Rar(fromDir + "/*", "temp");
+            UnRar(toDir + "/", "temp");
+
+            try
+            {
+                File.Delete(Application.StartupPath + "/temp.rar");
                 Directory.Delete(fromDir, true);
             }
             catch (Exception ex)
@@ -387,17 +445,26 @@ namespace DungeonsHelper
                 }
                 catch (Exception ex)
                 {
-                    if ((int)MessageBox.Show("检测到错误：" + ex.Message + "\r\n\r\n请不要点击按钮，现在需要您手动进行一个操作。操作如下：在弹出的文件夹中有一个“DUMP”文件夹，请打开它，将里面全部文件拷贝到“" + gamePath + "”下，注意目录层级，拷贝完成后请点击确定继续执行。\r\n\r\n作者目前不清楚这个错误为何发生，如果您知道原因请右下角联系作者帮助改进程序，谢谢。", "手动操作提示", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != 1)
+                    // 尝试rar复制法
+                    try
                     {
-                        UpdateLog("取消执行。");
-                        return;
+                        UpdateLog("移动文件失败，尝试使用压缩文件方式转移，可能需要一点时间..");
+                        MoveDirByRar("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP", gamePath);
                     }
-                    else
+                    catch (Exception ex2)
                     {
-                        UpdateLog("用户确认手动操作。");
-                    }
+                        if ((int)MessageBox.Show("检测到错误：" + ex2.Message + "\r\n\r\n请不要点击按钮，现在需要您手动进行一个操作。操作如下：在弹出的文件夹中有一个“DUMP”文件夹，请打开它，将里面全部文件拷贝到“" + gamePath + "”下，注意目录层级(如果拷贝文件出现错误“您的组织不允许……”，请用压缩工具打包为压缩包拷贝过去再解压，可绕开这个错误)，拷贝完成后请点击确定继续执行。\r\n\r\n作者目前不清楚这个错误为何发生，如果您知道原因请右下角联系作者帮助改进程序，谢谢。", "手动操作提示", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != 1)
+                        {
+                            UpdateLog("取消执行。");
+                            return;
+                        }
+                        else
+                        {
+                            UpdateLog("用户确认手动操作。");
+                        }
 
-                    // 检查是否正确移动
+                        // 检查是否正确移动                   
+                    }
                 }
 
                 UpdateLog("文件移动完毕，写入Paks..");
@@ -480,7 +547,11 @@ namespace DungeonsHelper
                 StreamReader sr = new StreamReader(Application.StartupPath + "/.GamePath", Encoding.UTF8);
                 textBox2.Text = sr.ReadToEnd().Trim();
                 sr.Close();
+
+                gamePath = textBox2.Text;
             }
+
+            //Console.WriteLine(OsMode());
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -504,6 +575,8 @@ namespace DungeonsHelper
                 {
                     textBox2.Text = folderBrowserDialog1.SelectedPath + "\\Dungeons";
                 }
+
+                gamePath = textBox2.Text;
 
                 StreamWriter sw = new StreamWriter(Application.StartupPath + "/.GamePath");
                 sw.WriteLine(textBox2.Text);
@@ -539,6 +612,11 @@ namespace DungeonsHelper
         private void button3_Click_1(object sender, EventArgs e)
         {
             CopyDir(Application.StartupPath + "/Paks/", Application.StartupPath + "/aaa/");
+        }
+
+        private void button3_Click_2(object sender, EventArgs e)
+        {
+            MoveDirByRar("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP", gamePath);
         }
 
     }
