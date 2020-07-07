@@ -181,7 +181,7 @@
             this.MinimizeBox = false;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Dungeons Win10 汉化整合工具 DCH 1.3";
+            this.Text = "Dungeons Win10 汉化整合工具 DCH 1.3.1";
             this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
             this.PerformLayout();

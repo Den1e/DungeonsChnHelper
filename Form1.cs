@@ -335,24 +335,32 @@ namespace DungeonsHelper
             }
         }
 
+        public bool IsGameCopySuccess()
+        {
+            return File.Exists(gamePath + "/appxmanifest.xml");
+        }
+
         public void BackupSaves()
         {
-            Directory.CreateDirectory("D:\\DungeonsSaves");
-            Directory.CreateDirectory("D:\\DungeonsSaves\\1.0");
-            Directory.CreateDirectory("D:\\DungeonsSaves\\1.2");
+
+            String path = Path.GetPathRoot(Application.StartupPath) + "DungeonsSaves";
+
+            Directory.CreateDirectory(path);
+            Directory.CreateDirectory(path + "\\1.0");
+            Directory.CreateDirectory(path + "\\1.2");
 
             // 获取“保存的游戏”目录
             IntPtr outPath;
             if (NativeMethods.SHGetKnownFolderPath(new Guid("{4C5C32FF-BB9D-43b0-B5B4-2D72E54EAAA4}"),
                 0x00004000, new IntPtr(0), out outPath) >= 0)
             {
-                CopyDir(Marshal.PtrToStringUni(outPath) + "\\Mojang Studios\\Dungeons\\", "D:\\DungeonsSaves\\1.2");
+                CopyDir(Marshal.PtrToStringUni(outPath) + "\\Mojang Studios\\Dungeons\\", path + "\\1.2");
             }
 
-            CopyDir("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Dungeons\\", "D:\\DungeonsSaves\\1.0");
-            
+            CopyDir("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Dungeons\\", path + "\\1.0");
 
-            UpdateLog("存档备份至 D:/DungeonsSaves。");
+
+            UpdateLog("存档备份至 " + path + "。");
             UpdateLog("注：六月更新后存档已升级，一般不会丢失，如有特殊情况请手动还原。");
         }
 
@@ -431,7 +439,7 @@ namespace DungeonsHelper
                     if (!Directory.Exists("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP"))
                     {
                         KillGame(process);
-                        throw new Exception("导出包失败，请联系开发组。");
+                        throw new Exception("导出包失败，请尝试手动操作Dumper或联系开发组。");
                     }
                 }
 
@@ -450,6 +458,10 @@ namespace DungeonsHelper
                     {
                         UpdateLog("移动文件失败，尝试使用压缩文件方式转移，可能需要一点时间..");
                         MoveDirByRar("C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Packages\\Microsoft.Lovika_8wekyb3d8bbwe\\TempState\\DUMP", gamePath);
+                        if (!IsGameCopySuccess())
+                        {
+                            throw new Exception("压缩文件方式转移失败。");
+                        }
                     }
                     catch (Exception ex2)
                     {
@@ -484,7 +496,7 @@ namespace DungeonsHelper
                     RegApp();
 
                     // 还原旧存档
-                    CopyDir("D:\\DungeonsSaves\\1.0", "C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Dungeons\\");
+                    CopyDir(Path.GetPathRoot(Application.StartupPath) + "DungeonsSaves\\1.0", "C:\\Users\\" + Environment.UserName + "\\AppData\\Local\\Dungeons\\");
                     UpdateLog("存档还原完毕。");
 
                 }
@@ -550,12 +562,11 @@ namespace DungeonsHelper
 
                 gamePath = textBox2.Text;
             }
-
-            //Console.WriteLine(OsMode());
         }
 
         private void button2_Click(object sender, EventArgs e)
         {
+            //Console.WriteLine(IsGameCopySuccess());
             BackupSaves();
         }
 
@@ -565,6 +576,8 @@ namespace DungeonsHelper
 
         private void button4_Click(object sender, EventArgs e)
         {
+            folderBrowserDialog1.SelectedPath = textBox2.Text;
+
             if (folderBrowserDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 if (folderBrowserDialog1.SelectedPath.EndsWith("Dungeons"))
