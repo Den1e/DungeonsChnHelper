@@ -11,18 +11,50 @@ using System.Runtime.InteropServices;
 using System.IO;
 using Microsoft.Win32;
 using System.Management;
+using System.Security.Principal;
 
 namespace DungeonsHelper
 {
     public partial class Form1 : Form
     {
-
-        private String gamePath = "";
+        /// <summary>
+        /// 判断程序是否是以管理员身份运行。
+        /// </summary>
+        public static bool IsRunAsAdmin()
+        {
+            WindowsIdentity id = WindowsIdentity.GetCurrent();
+            WindowsPrincipal principal = new WindowsPrincipal(id);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
 
         public Form1()
         {
+            try
+            {
+                //判断是否以管理员身份运行，不是则提示
+                if (!IsRunAsAdmin())
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo();
+                    psi.WorkingDirectory = Environment.CurrentDirectory;
+                    psi.FileName = Application.ExecutablePath;
+                    psi.UseShellExecute = true;
+                    psi.Verb = "runas";
+                    Process p = new Process();
+                    p.StartInfo = psi;
+                    p.Start();
+                    Process.GetCurrentProcess().Kill();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("获取Windows管理员身份失败，请手动选择Windows管理员身份运行", "提示", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Environment.Exit(0);
+                return;
+            }
             InitializeComponent();
         }
+
+        private String gamePath = "";
 
         private bool debug = false;
 
@@ -562,6 +594,8 @@ namespace DungeonsHelper
 
                 gamePath = textBox2.Text;
             }
+
+            UpdateLog("强烈建议您在开始前先暂时关闭360等防毒/监控功能，以防中途操作被意外中断。如果多次执行失败请检查是否有第三方软件存在干扰。");
         }
 
         private void button2_Click(object sender, EventArgs e)
